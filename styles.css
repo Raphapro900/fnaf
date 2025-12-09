@@ -1,0 +1,64 @@
+:root {
+  --bg:#0b0b0b;
+  --fg:#e5e5e5;
+  --accent:#c0392b;
+  --hud:#111;
+  --hud-border:#333;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:"Komika Axis", system-ui, sans-serif}
+
+#menu {
+  position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+  background: radial-gradient(ellipse at center, #111 0%, #000 60%);
+}
+.menu-content {
+  text-align:center; padding:2rem 3rem; border:2px solid var(--hud-border);
+  background:rgba(0,0,0,.6); box-shadow:0 0 40px rgba(255,255,255,.05);
+}
+.menu-content h1 {
+  font-size:4rem; letter-spacing:.2rem; margin:0; text-shadow:0 0 8px rgba(255,255,255,.15);
+}
+.subtitle { margin:.25rem 0 2rem; opacity:.7 }
+.menu-content button {
+  display:block; width:100%; margin:.5rem 0; padding:.8rem 1rem; font-size:1.2rem;
+  letter-spacing:.1rem; border:1px solid var(--hud-border); background:#151515; color:var(--fg);
+  transition:transform .15s cubic-bezier(.2,.8,.2,1), opacity .15s;
+}
+.menu-content button:hover { transform:scale(1.02); }
+.menu-content button:active { transform:scale(.98); }
+
+.hidden{display:none}
+
+#hud {
+  position:fixed; inset:0; pointer-events:none;
+}
+.hud-top, .hud-bottom {
+  display:flex; justify-content:space-between; padding:.5rem .75rem; font-size:1rem;
+}
+.hud-top { position:absolute; top:.5rem; left:0; right:0; }
+.hud-bottom { position:absolute; bottom:.5rem; left:0; right:0; opacity:.85 }
+.hud-time, .hud-night, .hud-power, .hud-room {
+  background:rgba(0,0,0,.6); border:1px solid var(--hud-border); padding:.35rem .6rem;
+  text-transform:uppercase; letter-spacing:.08rem;
+}
+
+#camera-overlay {
+  position:absolute; inset:0; background:rgba(0,0,0,.75); backdrop-filter: blur(2px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  pointer-events:auto;
+}
+.camera-grid {
+  display:grid; grid-template-columns:repeat(3, 160px); gap:.6rem; margin-bottom:1rem;
+}
+.cam-btn {
+  padding:.6rem; background:#121212; color:#ddd; border:1px solid #333; cursor:pointer;
+}
+.cam-btn:hover { border-color:#777; }
+.camera-title { font-size:1.1rem; opacity:.8; }
+
+#game { position:fixed; inset:0; width:100%; height:100%; display:block; }
+
+/* Pequeño parpadeo estilo FNAF */
+@keyframes flicker { 0%{opacity:.96} 50%{opacity:.8} 100%{opacity:.96} }
+.hud-top, .hud-bottom { animation: flicker 3s infinite; }
