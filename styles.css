@@ -57,6 +57,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:
 .cam-btn:hover { border-color:#777; }
 .camera-title { font-size:1.1rem; opacity:.8; }
 
+
 #game { position:fixed; inset:0; width:100%; height:100%; display:block; }
 
 /* Pequeño parpadeo estilo FNAF */
