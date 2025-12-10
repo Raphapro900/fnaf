@@ -1,72 +1,560 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FNAF HTML 3D</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="style.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Five Nights HTML 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b0f13;
+  --ui: #cbd4e1;
+  --accent: #66e3ff;
+  --danger: #ff4d4d;
+  --warn: #ffd966;
+  --panel: #11161c;
+  --border: #2a313c;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ui); font-family: Inter, system-ui, sans-serif; }
+button { font: inherit; }
+
+.hidden { display: none !important; }
+
+/* Main menu */
+#menu {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  background: radial-gradient(1200px 600px at 50% 40%, rgba(0,0,0,0.55), rgba(0,0,0,0.9));
+}
+.menu-panel {
+  width: 360px; padding: 22px; background: var(--panel); border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+.menu-panel h1 { margin: 0 0 4px; letter-spacing: 0.5px; }
+.menu-panel p { margin: 0 0 12px; opacity: 0.8; }
+.menu-panel .btn { width: 100%; padding: 10px; margin-top: 10px; background: #151a21; border: 1px solid var(--border); color: var(--ui); cursor: pointer; }
+.menu-panel .btn:hover { border-color: var(--accent); color: #fff; }
+
+/* HUD */
+#hud {
+  position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; padding: 10px 16px; pointer-events: none;
+}
+#hud .left, #hud .right { pointer-events: auto; display: flex; gap: 10px; align-items: center; }
+#hud .chip { padding: 8px 12px; background: #151a21; border: 1px solid var(--border); }
+#hud .btn { padding: 8px 12px; background: #151a21; color: var(--ui); border: 1px solid var(--border); cursor: pointer; }
+#hud .meter { font-size: 14px; opacity: 0.9; }
+
+/* Oficina 3D */
+#scene { position: fixed; inset: 0; display: grid; place-items: center; perspective: 1000px; overflow: hidden; }
+#office {
+  width: 1100px; height: 640px; position: relative; transform-style: preserve-3d;
+  transition: transform 160ms cubic-bezier(0.2,0.7,0,1);
+}
+/* Paredes (pseudo 3D con rotación y profundidad) */
+.wall { position: absolute; width: 100%; height: 100%; background: #0e1318; }
+.wall.center { transform: translateZ(0); background:
+  linear-gradient(180deg, #0f1419 0%, #0b0f13 100%),
+  repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 6px, rgba(255,255,255,0.01) 6px 12px);
+}
+.wall.left { transform: translateZ(-160px) rotateY(20deg); transform-origin: left center; background:
+  linear-gradient(90deg, #0c1116 0%, #11161c 100%);
+  filter: brightness(0.95) contrast(1.05);
+}
+.wall.right { transform: translateZ(-160px) rotateY(-20deg); transform-origin: right center; background:
+  linear-gradient(270deg, #0c1116 0%, #11161c 100%);
+  filter: brightness(0.95) contrast(1.05);
+}
+/* Mesa y monitor */
+.desk { position: absolute; bottom: 36px; left: 50%; transform: translateX(-50%); width: 720px; height: 120px; background: #141a21; border: 1px solid #1f2530; box-shadow: 0 -8px 40px rgba(0,0,0,0.45) inset; }
+.monitor { position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%) translateZ(30px); width: 360px; height: 200px; background: #0b0f13; border: 1px solid #263041; display: grid; place-items: center; color: #7f8fa3; }
+/* Puertas y luces */
+.door, .light {
+  position: absolute; top: 52%; transform: translateY(-50%); background: #0f1318; border: 1px solid var(--border); color: var(--ui); padding: 8px 10px; cursor: pointer; z-index: 5;
+}
+.door.left { left: 16px; }
+.door.right { right: 16px; }
+.light { top: 64%; }
+.light.left { left: 16px; }
+.light.right { right: 16px; }
+/* Halos de luz */
+.light-beam { position: absolute; top: 0; width: 30%; height: 100%; pointer-events: none; opacity: 0; mix-blend-mode: screen; z-index: 2; transition: opacity 120ms ease; }
+.light-beam.left { left: 0; background: radial-gradient(600px 400px at 10% 50%, rgba(255,240,180,0.25), transparent 70%); }
+.light-beam.right { right: 0; background: radial-gradient(600px 400px at 90% 50%, rgba(255,240,180,0.25), transparent 70%); }
+
+/* Animatrónicos (paneles estilizados 3D) */
+.bot {
+  position: absolute; width: 140px; height: 200px; background: #1a2029; border: 1px solid #2a313c; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  display: grid; grid-template-rows: auto 1fr; color: #9fb0c7; text-align: center; padding-top: 8px;
+  transform-style: preserve-3d;
+}
+.bot .face { margin: 6px auto; width: 96px; height: 96px; border-radius: 50%; background: radial-gradient(circle at 40% 40%, #2e3744, #1a2029); box-shadow: 0 0 20px rgba(255,0,0,0.0); }
+.bot .name { font-size: 14px; opacity: 0.85; }
+
+/* Posiciones aproximadas en la oficina */
+.bot.freddy { bottom: 220px; left: calc(50% - 70px); transform: translateZ(-60px) scale(0.0001); opacity: 0; } /* aparece solo en jumpscare frontal */
+.bot.bonnie { bottom: 180px; left: 40px; transform: translateZ(-120px) rotateY(15deg) scale(0.0001); opacity: 0; }
+.bot.chica  { bottom: 180px; right: 40px; transform: translateZ(-120px) rotateY(-15deg) scale(0.0001); opacity: 0; }
+
+/* Aparición cuando están en la oficina */
+.bot.show { transition: transform 160ms ease, opacity 160ms ease; transform: translateZ(10px) scale(1); opacity: 1; }
+
+/* Monitor de cámaras */
+#cams {
+  position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,0.86); z-index: 50;
+}
+.cams-ui {
+  width: 92vw; max-width: 1100px; height: 82vh; background: #0f1216; border: 1px solid #2a313c; display: grid;
+  grid-template-columns: 260px 1fr; grid-template-rows: 1fr auto; gap: 10px; padding: 10px;
+}
+.map { display: grid; gap: 8px; align-content: start; }
+.map button { background: #121820; border: 1px solid #263041; color: #A8B3C2; padding: 8px; cursor: pointer; text-align: left; }
+.map button:hover { border-color: var(--accent); color: #DFF7FF; }
+.feed { position: relative; background: #0b0f13; display: grid; place-items: center; border: 1px solid #263041; color: #7f8fa3; font-size: 20px; }
+.feed .label { position: absolute; top: 8px; left: 8px; font-size: 12px; letter-spacing: 0.8px; opacity: 0.8; }
+.feed .static { position: absolute; inset: 0; background:
+  repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 2px, rgba(255,255,255,0.01) 2px 4px);
+  mix-blend-mode: screen; opacity: 0.25; animation: flicker 1.6s steps(2) infinite;
+}
+@keyframes flicker { 50% { opacity: 0.18 } }
+
+.close { grid-column: 1 / -1; justify-self: end; padding: 8px 12px; background: #151a21; border: 1px solid var(--border); color: var(--ui); cursor: pointer; }
+
+/* Jumpscare */
+#jumpscare { position: fixed; inset: 0; display: grid; place-items: center; background: black; z-index: 100; }
+#jumpscare .bang { width: 100%; height: 100%; display: grid; place-items: center; color: #ffded6; font-size: 48px; letter-spacing: 2px; animation: snap 380ms ease-in forwards; }
+@keyframes snap { 0% { transform: scale(1) } 100% { transform: scale(1.08) } }
+
+/* Cámara en monitor de oficina (decorativo) */
+.monitor .screen {
+  width: 90%; height: 80%; border: 1px solid #263041; display: grid; place-items: center; color: #7f8fa3; font-size: 14px;
+  position: relative; overflow: hidden;
+}
+.monitor .screen .scan { position: absolute; left: 0; right: 0; top: -20%; height: 30%; background: linear-gradient(180deg, rgba(102,227,255,0.08), transparent); animation: scan 2.8s linear infinite; }
+@keyframes scan { 100% { transform: translateY(160%) } }
+
+/* Feedback de puertas y luces */
+.active-door { border-color: var(--accent) !important; }
+.active-light { border-color: var(--warn) !important; }
+
+/* Utilidades */
+.center-row { display: flex; gap: 10px; justify-content: center; align-items: center; }
+.small { font-size: 12px; opacity: 0.8; }
+</style>
 </head>
 <body>
-  <!-- Main Menu -->
-  <div id="menu">
-    <div class="menu-panel">
-      <h1>Five Nights HTML</h1>
-      <p>Noche 1</p>
-      <button id="btnPlay">Nueva Partida</button>
-      <button id="btnContinue">Continuar</button>
-      <button id="btnMute">Mute</button>
-    </div>
+
+<!-- Main Menu -->
+<div id="menu">
+  <div class="menu-panel">
+    <h1>Five Nights HTML 3D</h1>
+    <p>Noche 1</p>
+    <button id="btnPlay" class="btn">Nueva Partida</button>
+    <button id="btnContinue" class="btn">Continuar</button>
+    <button id="btnMute" class="btn">Mute</button>
   </div>
+</div>
 
-  <!-- HUD -->
-  <div id="hud" class="hidden">
-    <div class="hud-left">
-      <button id="btnCam">Cámaras</button>
-    </div>
-    <div class="hud-right">
-      <div id="power">Power: <span id="powerVal">100%</span></div>
-      <div id="time">12:00 AM</div>
-      <div id="night">Noche 1</div>
-    </div>
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="left">
+    <button id="btnCam" class="btn">Cámaras</button>
+    <div id="night" class="chip">Noche 1</div>
   </div>
-
-  <!-- Oficina (3D) -->
-  <div id="scene">
-    <div id="office">
-      <img class="bg wall-left" src="assets/office/left.png" alt="Left wall">
-      <img class="bg center" src="assets/office/center.png" alt="Center">
-      <img class="bg wall-right" src="assets/office/right.png" alt="Right wall">
-
-      <!-- Puertas / luces -->
-      <button class="door left" id="doorLeft">Puerta Izq</button>
-      <button class="door right" id="doorRight">Puerta Der</button>
-      <button class="light left" id="lightLeft">Luz Izq</button>
-      <button class="light right" id="lightRight">Luz Der</button>
-    </div>
+  <div class="right">
+    <div id="power" class="meter">Power: <span id="powerVal">100%</span></div>
+    <div id="time" class="meter">12:00 AM</div>
   </div>
+</div>
 
-  <!-- Monitor de cámaras -->
-  <div id="cams" class="hidden">
-    <div class="cams-ui">
-      <div class="map">
-        <button data-cam="stage">Show Stage</button>
-        <button data-cam="hall">Pasillo</button>
-        <button data-cam="closet">Closet</button>
-        <button data-cam="kitchen">Cocina</button>
+<!-- Escena de oficina -->
+<div id="scene">
+  <div id="office">
+    <div class="wall left"></div>
+    <div class="wall center"></div>
+    <div class="wall right"></div>
+
+    <div class="desk"></div>
+    <div class="monitor">
+      <div class="screen">
+        <div>OFFICE MONITOR</div>
+        <div class="scan"></div>
       </div>
-      <div class="feed">
-        <img id="camFeed" src="assets/cams/stage.png" alt="Cam feed">
-      </div>
-      <button id="closeCams" class="close">Cerrar</button>
+    </div>
+
+    <!-- Luces (halos) -->
+    <div id="beamLeft" class="light-beam left"></div>
+    <div id="beamRight" class="light-beam right"></div>
+
+    <!-- Controles -->
+    <button id="doorLeft" class="door left">Puerta Izq</button>
+    <button id="doorRight" class="door right">Puerta Der</button>
+    <button id="lightLeft" class="light left">Luz Izq</button>
+    <button id="lightRight" class="light right">Luz Der</button>
+
+    <!-- Animatrónicos en oficina -->
+    <div id="botFreddy" class="bot freddy">
+      <div class="face"></div><div class="name">Freddy</div>
+    </div>
+    <div id="botBonnie" class="bot bonnie">
+      <div class="face"></div><div class="name">Bonnie</div>
+    </div>
+    <div id="botChica" class="bot chica">
+      <div class="face"></div><div class="name">Chica</div>
     </div>
   </div>
+</div>
 
-  <!-- Jumpscare overlay -->
-  <div id="jumpscare" class="hidden">
-    <img id="jumpscareImg" src="assets/animatronics/freddy_jumpscare.png" alt="Jumpscare">
+<!-- Monitor de cámaras -->
+<div id="cams" class="hidden">
+  <div class="cams-ui">
+    <div class="map">
+      <button data-cam="stage">Show Stage</button>
+      <button data-cam="hall">Pasillo</button>
+      <button data-cam="closet">Closet</button>
+      <button data-cam="kitchen">Cocina</button>
+      <button data-cam="office">Oficina</button>
+    </div>
+    <div class="feed">
+      <div class="label" id="camLabel">CAM: Show Stage</div>
+      <div id="camView" style="width:100%;height:100%;display:grid;place-items:center;">
+        <div id="camDecor" class="center-row small">— señal débil —</div>
+      </div>
+      <div class="static"></div>
+    </div>
+    <button id="closeCams" class="close">Cerrar</button>
   </div>
+</div>
 
-  <script src="main.js"></script>
+<!-- Jumpscare -->
+<div id="jumpscare" class="hidden">
+  <div class="bang">JUMPSCARE</div>
+</div>
+
+<script>
+const state = {
+  running: false,
+  muted: false,
+  power: 100,
+  hour: 0, // 0..5 -> 12AM..5AM
+  viewYaw: 0,
+  inCams: false,
+  doors: { left: false, right: false },
+  lights: { left: false, right: false },
+  animatronics: {
+    freddy: { room: "stage", aggression: 0.20, route: ["stage","hall","closet","office"] },
+    bonnie: { room: "stage", aggression: 0.35, route: ["stage","hall","office_left"] },
+    chica:  { room: "stage", aggression: 0.30, route: ["stage","kitchen","office_right"] },
+  }
+};
+
+const el = {
+  menu: document.getElementById("menu"),
+  btnPlay: document.getElementById("btnPlay"),
+  btnContinue: document.getElementById("btnContinue"),
+  btnMute: document.getElementById("btnMute"),
+  hud: document.getElementById("hud"),
+  btnCam: document.getElementById("btnCam"),
+  cams: document.getElementById("cams"),
+  closeCams: document.getElementById("closeCams"),
+  camLabel: document.getElementById("camLabel"),
+  camView: document.getElementById("camView"),
+  office: document.getElementById("office"),
+  doorLeft: document.getElementById("doorLeft"),
+  doorRight: document.getElementById("doorRight"),
+  lightLeft: document.getElementById("lightLeft"),
+  lightRight: document.getElementById("lightRight"),
+  beamLeft: document.getElementById("beamLeft"),
+  beamRight: document.getElementById("beamRight"),
+  botFreddy: document.getElementById("botFreddy"),
+  botBonnie: document.getElementById("botBonnie"),
+  botChica: document.getElementById("botChica"),
+  powerVal: document.getElementById("powerVal"),
+  time: document.getElementById("time"),
+};
+
+el.btnPlay.addEventListener("click", () => startGame(true));
+el.btnContinue.addEventListener("click", () => startGame(false));
+el.btnMute.addEventListener("click", () => {
+  state.muted = !state.muted;
+  el.btnMute.textContent = state.muted ? "Unmute" : "Mute";
+});
+
+function startGame(reset) {
+  if (reset) {
+    state.power = 100;
+    state.hour = 0;
+    for (const k in state.animatronics) state.animatronics[k].room = "stage";
+  }
+  state.running = true;
+  el.menu.classList.add("hidden");
+  el.hud.classList.remove("hidden");
+  lastT = performance.now();
+  hourAccumulator = 0;
+  requestAnimationFrame(tick);
+}
+
+/* Paneo izquierda/centro/derecha con mouse */
+window.addEventListener("mousemove", (e) => {
+  if (!state.running || state.inCams) return;
+  const x = e.clientX / window.innerWidth;
+  const dead = 0.10;
+  let yaw = (x - 0.5) * 2;
+  if (Math.abs(yaw) < dead) yaw = 0;
+  yaw = Math.max(-1, Math.min(1, yaw));
+  state.viewYaw = yaw;
+  applyView();
+});
+
+function applyView() {
+  const maxRot = 12;  // grados
+  const maxShift = 42; // px
+  const r = state.viewYaw * maxRot;
+  const s = state.viewYaw * maxShift;
+  el.office.style.transform = `translateX(${s}px) rotateY(${r}deg)`;
+}
+
+/* Cámaras */
+el.btnCam.addEventListener("click", () => { openCams(); });
+el.closeCams.addEventListener("click", () => { closeCams(); });
+
+document.querySelectorAll(".map button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const cam = btn.dataset.cam;
+    renderCam(cam);
+  });
+});
+
+function openCams() {
+  state.inCams = true;
+  el.cams.classList.remove("hidden");
+  renderCam("stage");
+}
+function closeCams() {
+  state.inCams = false;
+  el.cams.classList.add("hidden");
+}
+
+function renderCam(cam) {
+  el.camLabel.textContent = `CAM: ${labelFor(cam)}`;
+  el.camView.innerHTML = "";
+  const view = document.createElement("div");
+  view.style.width = "100%";
+  view.style.height = "100%";
+  view.style.position = "relative";
+  view.style.display = "grid";
+  view.style.placeItems = "center";
+  // fondo sintético distinto por sala
+  const bg = camBg(cam);
+  view.style.background = bg;
+  // marcador de bots si están en esa sala
+  const markers = botsInRoom(cam);
+  markers.forEach(m => view.appendChild(m));
+  el.camView.appendChild(view);
+}
+
+function labelFor(cam) {
+  switch (cam) {
+    case "stage": return "Show Stage";
+    case "hall": return "Pasillo";
+    case "closet": return "Closet";
+    case "kitchen": return "Cocina";
+    case "office": return "Oficina";
+    default: return cam;
+  }
+}
+
+function camBg(cam) {
+  const grain = "repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 2px, rgba(255,255,255,0.01) 2px 4px)";
+  switch (cam) {
+    case "stage":
+      return `linear-gradient(180deg,#0d1217,#0a0e12), ${grain}`;
+    case "hall":
+      return `linear-gradient(90deg,#0c1116,#0f1419), ${grain}`;
+    case "closet":
+      return `linear-gradient(180deg,#0a0f14,#0f1419), ${grain}`;
+    case "kitchen":
+      return `linear-gradient(180deg,#0b1015,#0e1318), ${grain}`;
+    case "office":
+      return `linear-gradient(180deg,#0b0f13,#0e1318), ${grain}`;
+    default:
+      return `linear-gradient(180deg,#0b0f13,#0e1318), ${grain}`;
+  }
+}
+
+function botMarker(name) {
+  const d = document.createElement("div");
+  d.style.width = "100px";
+  d.style.height = "140px";
+  d.style.border = "1px solid #2a313c";
+  d.style.background = "#141a21";
+  d.style.boxShadow = "0 10px 40px rgba(0,0,0,0.6)";
+  d.style.display = "grid";
+  d.style.gridTemplateRows = "auto 1fr";
+  d.style.color = "#9fb0c7";
+  d.style.textAlign = "center";
+  d.style.paddingTop = "6px";
+  const face = document.createElement("div");
+  face.style.margin = "6px auto";
+  face.style.width = "72px";
+  face.style.height = "72px";
+  face.style.borderRadius = "50%";
+  face.style.background = "radial-gradient(circle at 40% 40%, #2e3744, #1a2029)";
+  const label = document.createElement("div");
+  label.style.fontSize = "12px";
+  label.style.opacity = "0.85";
+  label.textContent = name[0].toUpperCase() + name.slice(1);
+  d.appendChild(face); d.appendChild(label);
+  return d;
+}
+
+function botsInRoom(cam) {
+  const arr = [];
+  for (const name in state.animatronics) {
+    const a = state.animatronics[name];
+    if (a.room === cam) {
+      const mk = botMarker(name);
+      arr.push(mk);
+    }
+  }
+  return arr;
+}
+
+/* Puertas y luces */
+el.doorLeft.addEventListener("click", () => {
+  state.doors.left = !state.doors.left;
+  el.doorLeft.classList.toggle("active-door", state.doors.left);
+});
+el.doorRight.addEventListener("click", () => {
+  state.doors.right = !state.doors.right;
+  el.doorRight.classList.toggle("active-door", state.doors.right);
+});
+el.lightLeft.addEventListener("click", () => {
+  state.lights.left = !state.lights.left;
+  el.lightLeft.classList.toggle("active-light", state.lights.left);
+  el.beamLeft.style.opacity = state.lights.left ? "1" : "0";
+});
+el.lightRight.addEventListener("click", () => {
+  state.lights.right = !state.lights.right;
+  el.lightRight.classList.toggle("active-light", state.lights.right);
+  el.beamRight.style.opacity = state.lights.right ? "1" : "0";
+});
+
+/* Tiempo y energía */
+let lastT = 0;
+let hourAccumulator = 0;
+
+function updateClockPower(dt) {
+  const use =
+    (state.doors.left ? 0.08 : 0) +
+    (state.doors.right ? 0.08 : 0) +
+    (state.lights.left ? 0.05 : 0) +
+    (state.lights.right ? 0.05 : 0) +
+    (state.inCams ? 0.06 : 0) + 0.02;
+  state.power = Math.max(0, state.power - use * dt);
+
+  hourAccumulator += dt;
+  if (hourAccumulator >= 60) {
+    hourAccumulator = 0;
+    state.hour = Math.min(5, state.hour + 1);
+  }
+  const labels = ["12:00 AM","1:00 AM","2:00 AM","3:00 AM","4:00 AM","5:00 AM"];
+  el.time.textContent = labels[state.hour];
+  el.powerVal.textContent = `${Math.round(state.power)}%`;
+}
+
+/* IA y movimiento de animatrónicos */
+function aiStep(dt) {
+  const camDebuff = state.inCams ? 0.7 : 1.0;
+  for (const name in state.animatronics) {
+    const a = state.animatronics[name];
+    const route = a.route;
+    const idx = route.indexOf(a.room);
+    if (idx < route.length - 1) {
+      const p = a.aggression * camDebuff * dt;
+      if (Math.random() < p) {
+        a.room = route[idx + 1];
+        if (state.inCams) renderCam(route[idx + 1]); // feedback instantáneo
+      }
+    } else {
+      // Están en la oficina (varía según ruta)
+      let caught = false;
+      if (a.room === "office_left" && !state.doors.left) caught = true;
+      if (a.room === "office_right" && !state.doors.right) caught = true;
+      if (a.room === "office") caught = true; // Freddy frontal
+      if (caught) {
+        triggerOfficePresence(name);
+        setTimeout(() => triggerJumpscare(name), 650);
+      } else {
+        a.room = route[0]; // reintento si puerta está cerrada
+      }
+    }
+  }
+}
+
+/* Aparición visual cuando llegan a la oficina */
+function triggerOfficePresence(name) {
+  switch (name) {
+    case "freddy":
+      el.botFreddy.classList.add("show");
+      break;
+    case "bonnie":
+      el.botBonnie.classList.add("show");
+      break;
+    case "chica":
+      el.botChica.classList.add("show");
+      break;
+  }
+  setTimeout(() => {
+    el.botFreddy.classList.remove("show");
+    el.botBonnie.classList.remove("show");
+    el.botChica.classList.remove("show");
+  }, 600);
+}
+
+/* Jumpscare */
+function triggerJumpscare(name) {
+  state.running = false;
+  document.getElementById("jumpscare").classList.remove("hidden");
+  setTimeout(() => {
+    document.getElementById("jumpscare").classList.add("hidden");
+    // Volver al menú
+    el.menu.classList.remove("hidden");
+    el.hud.classList.add("hidden");
+    reset();
+  }, 1600);
+}
+
+function reset() {
+  state.viewYaw = 0; applyView();
+  for (const k in state.animatronics) state.animatronics[k].room = "stage";
+  state.inCams = false;
+  state.doors.left = state.doors.right = false;
+  state.lights.left = state.lights.right = false;
+  el.beamLeft.style.opacity = "0";
+  el.beamRight.style.opacity = "0";
+  el.doorLeft.classList.remove("active-door");
+  el.doorRight.classList.remove("active-door");
+  el.lightLeft.classList.remove("active-light");
+  el.lightRight.classList.remove("active-light");
+}
+
+/* Bucle principal */
+function tick(t = performance.now()) {
+  if (!state.running) return;
+  const dt = (t - lastT) / 1000 || 0.016;
+  lastT = t;
+
+  updateClockPower(dt);
+  aiStep(dt);
+
+  // Apagón acelera IA
+  if (state.power <= 0) {
+    for (const k in state.animatronics) state.animatronics[k].aggression = Math.min(1, state.animatronics[k].aggression + 0.12);
+  }
+  requestAnimationFrame(tick);
+}
+</script>
 </body>
 </html>
