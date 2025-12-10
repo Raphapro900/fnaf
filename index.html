@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FNAF HTML 3D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Main Menu -->
+  <div id="menu">
+    <div class="menu-panel">
+      <h1>Five Nights HTML</h1>
+      <p>Noche 1</p>
+      <button id="btnPlay">Nueva Partida</button>
+      <button id="btnContinue">Continuar</button>
+      <button id="btnMute">Mute</button>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-left">
+      <button id="btnCam">Cámaras</button>
+    </div>
+    <div class="hud-right">
+      <div id="power">Power: <span id="powerVal">100%</span></div>
+      <div id="time">12:00 AM</div>
+      <div id="night">Noche 1</div>
+    </div>
+  </div>
+
+  <!-- Oficina (3D) -->
+  <div id="scene">
+    <div id="office">
+      <img class="bg wall-left" src="assets/office/left.png" alt="Left wall">
+      <img class="bg center" src="assets/office/center.png" alt="Center">
+      <img class="bg wall-right" src="assets/office/right.png" alt="Right wall">
+
+      <!-- Puertas / luces -->
+      <button class="door left" id="doorLeft">Puerta Izq</button>
+      <button class="door right" id="doorRight">Puerta Der</button>
+      <button class="light left" id="lightLeft">Luz Izq</button>
+      <button class="light right" id="lightRight">Luz Der</button>
+    </div>
+  </div>
+
+  <!-- Monitor de cámaras -->
+  <div id="cams" class="hidden">
+    <div class="cams-ui">
+      <div class="map">
+        <button data-cam="stage">Show Stage</button>
+        <button data-cam="hall">Pasillo</button>
+        <button data-cam="closet">Closet</button>
+        <button data-cam="kitchen">Cocina</button>
+      </div>
+      <div class="feed">
+        <img id="camFeed" src="assets/cams/stage.png" alt="Cam feed">
+      </div>
+      <button id="closeCams" class="close">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- Jumpscare overlay -->
+  <div id="jumpscare" class="hidden">
+    <img id="jumpscareImg" src="assets/animatronics/freddy_jumpscare.png" alt="Jumpscare">
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
