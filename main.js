@@ -1,47 +1,46 @@
-// Estado base
 const state = {
   running: false,
-  muted: false,
   power: 100,
-  hour: 0, // 0 = 12AM, 5 = 5AM
-  viewYaw: 0, // -1 izquierda, 0 centro, +1 derecha
+  hour: 0, // 0 = 12AM
+  viewYaw: 0,
   inCams: false,
   doors: { left: false, right: false },
   lights: { left: false, right: false },
   animatronics: {
-    freddy: { room: "stage", aggression: 0.2 },
-    bonnie: { room: "stage", aggression: 0.35 },
-    chica:  { room: "stage", aggression: 0.30 },
+    freddy: { room: "stage", aggression: 0.20, route: ["stage","hall","closet","office"] },
+    bonnie: { room: "stage", aggression: 0.35, route: ["stage","hall","office_left"] },
+    chica:  { room: "stage", aggression: 0.30, route: ["stage","kitchen","office_right"] },
   }
 };
 
-// Referencias UI
 const el = {
   menu: document.getElementById("menu"),
   btnPlay: document.getElementById("btnPlay"),
   btnContinue: document.getElementById("btnContinue"),
   btnMute: document.getElementById("btnMute"),
   hud: document.getElementById("hud"),
-  scene: document.getElementById("scene"),
-  office: document.getElementById("office"),
   btnCam: document.getElementById("btnCam"),
   cams: document.getElementById("cams"),
-  camFeed: document.getElementById("camFeed"),
   closeCams: document.getElementById("closeCams"),
+  camLabel: document.getElementById("camLabel"),
+  camView: document.getElementById("camView"),
+  office: document.getElementById("office"),
   doorLeft: document.getElementById("doorLeft"),
   doorRight: document.getElementById("doorRight"),
   lightLeft: document.getElementById("lightLeft"),
   lightRight: document.getElementById("lightRight"),
-  jumpscare: document.getElementById("jumpscare"),
-  jumpscareImg: document.getElementById("jumpscareImg"),
-  power: document.getElementById("powerVal"),
+  beamLeft: document.getElementById("beamLeft"),
+  beamRight: document.getElementById("beamRight"),
+  botFreddy: document.getElementById("botFreddy"),
+  botBonnie: document.getElementById("botBonnie"),
+  botChica: document.getElementById("botChica"),
+  powerVal: document.getElementById("powerVal"),
   time: document.getElementById("time"),
+  jumpscare: document.getElementById("jumpscare"),
 };
 
-// Iniciar juego
 el.btnPlay.addEventListener("click", () => startGame(true));
 el.btnContinue.addEventListener("click", () => startGame(false));
-el.btnMute.addEventListener("click", () => { state.muted = !state.muted; el.btnMute.textContent = state.muted ? "Unmute" : "Mute"; });
 
 function startGame(reset) {
   if (reset) {
@@ -52,16 +51,17 @@ function startGame(reset) {
   state.running = true;
   el.menu.classList.add("hidden");
   el.hud.classList.remove("hidden");
-  tick();
+  lastT = performance.now();
+  lastClock = Date.now();
+  requestAnimationFrame(tick);
 }
 
-// Paneo por mouse (izq/der)
+/* Paneo con mouse */
 window.addEventListener("mousemove", (e) => {
   if (!state.running || state.inCams) return;
-  const x = e.clientX / window.innerWidth; // 0..1
-  // Mapear a yaw: izquierda -1, centro 0, derecha +1 con zona muerta
-  const dead = 0.12;
-  let yaw = (x - 0.5) * 2; // -1..1
+  const x = e.clientX / window.innerWidth;
+  const dead = 0.10;
+  let yaw = (x - 0.5) * 2;
   if (Math.abs(yaw) < dead) yaw = 0;
   yaw = Math.max(-1, Math.min(1, yaw));
   state.viewYaw = yaw;
@@ -69,147 +69,182 @@ window.addEventListener("mousemove", (e) => {
 });
 
 function applyView() {
-  // rotación leve y desplazamiento para dar sensación 3D
-  const maxRot = 10;   // grados
-  const maxShift = 40; // px
+  const maxRot = 12;
+  const maxShift = 42;
   const r = state.viewYaw * maxRot;
   const s = state.viewYaw * maxShift;
   el.office.style.transform = `translateX(${s}px) rotateY(${r}deg)`;
 }
 
-// Botones cámaras
-el.btnCam.addEventListener("click", () => {
-  state.inCams = true;
-  el.cams.classList.remove("hidden");
-});
-el.closeCams.addEventListener("click", closeCams);
+/* Cámaras */
+el.btnCam.addEventListener("click", () => { openCams(); });
+el.closeCams.addEventListener("click", () => { closeCams(); });
 
 document.querySelectorAll(".map button").forEach(btn => {
   btn.addEventListener("click", () => {
     const cam = btn.dataset.cam;
-    el.camFeed.src = `assets/cams/${cam}.png`;
+    renderCam(cam);
   });
 });
 
+function openCams() {
+  state.inCams = true;
+  el.cams.classList.remove("hidden");
+  renderCam("stage");
+}
 function closeCams() {
   state.inCams = false;
   el.cams.classList.add("hidden");
 }
 
-// Puertas y luces
+function renderCam(cam) {
+  el.camLabel.textContent = `CAM: ${cam}`;
+  el.camView.innerHTML = "";
+  const feed = document.createElement("div");
+  feed.className = "vhs";
+  feed.textContent = `Vista de ${cam}`;
+  el.camView.appendChild(feed);
+}
+
+/* Puertas y luces */
 el.doorLeft.addEventListener("click", () => {
   state.doors.left = !state.doors.left;
-  el.doorLeft.style.borderColor = state.doors.left ? "#5ee1ff" : "#2a313c";
+  el.doorLeft.classList.toggle("active-door", state.doors.left);
 });
 el.doorRight.addEventListener("click", () => {
   state.doors.right = !state.doors.right;
-  el.doorRight.style.borderColor = state.doors.right ? "#5ee1ff" : "#2a313c";
+  el.doorRight.classList.toggle("active-door", state.doors.right);
 });
-el.lightLeft.addEventListener("click", () => {
-  state.lights.left = !state.lights.left;
-  el.lightLeft.style.borderColor = state.lights.left ? "#ffd966" : "#2a313c";
-});
-el.lightRight.addEventListener("click", () => {
-  state.lights.right = !state.lights.right;
-  el.lightRight.style.borderColor = state.lights.right ? "#ffd966" : "#2a313c";
-});
+el.lightLeft.addEventListener("click", () => toggleLight("left"));
+el.lightRight.addEventListener("click", () => toggleLight("right"));
 
-// Reloj y consumo de energía
+function toggleLight(side) {
+  state.lights[side] = !state.lights[side];
+  const beam = side === "left" ? el.beamLeft : el.beamRight;
+  beam.style.opacity = state.lights[side] ? "1" : "0";
+  // Revelar animatrónicos si están en esa puerta
+  for (const name in state.animatronics) {
+    const a = state.animatronics[name];
+    if ((side==="left" && a.room==="office_left") ||
+        (side==="right" && a.room==="office_right")) {
+      triggerOfficePresence(name);
+    }
+  }
+}
+
+/* Tiempo y energía */
+let lastT = 0;
+let lastClock = 0;
+
 function updateClockPower(dt) {
-  // Avanza tiempo cada ~60s por hora de juego (ajustable)
-  // Consumo por puertas/luces/cámaras
   const use =
     (state.doors.left ? 0.08 : 0) +
     (state.doors.right ? 0.08 : 0) +
     (state.lights.left ? 0.05 : 0) +
     (state.lights.right ? 0.05 : 0) +
-    (state.inCams ? 0.06 : 0) + 0.02; // base
-
+    (state.inCams ? 0.06 : 0) + 0.02;
   state.power = Math.max(0, state.power - use * dt);
 
-  // Hora cambia cada 60 "segundos" simulados
-  hourAccumulator += dt;
-  if (hourAccumulator >= 60) {
-    hourAccumulator = 0;
-    state.hour = Math.min(5, state.hour + 1);
+  // Avanza hora cada 60 segundos reales
+  const now = Date.now();
+  if (now - lastClock >= 60000) {
+    lastClock = now;
+    state.hour = Math.min(6, state.hour + 1);
+    const labels = ["12:00 AM","1:00 AM","2:00 AM","3:00 AM","4:00 AM","5:00 AM","6:00 AM"];
+    el.time.textContent = labels[state.hour];
+    if (state.hour === 6) winNight();
   }
-
-  const hourLabels = ["12:00 AM","1:00 AM","2:00 AM","3:00 AM","4:00 AM","5:00 AM"];
-  el.time.textContent = hourLabels[state.hour];
-  el.power.textContent = `${Math.round(state.power)}%`;
+  el.powerVal.textContent = `${Math.round(state.power)}%`;
 }
 
-let lastT = 0;
-let hourAccumulator = 0;
-
-function tick(t=performance.now()) {
-  if (!state.running) return;
-  const dt = (t - lastT) / 1000 || 0.016; // segundos
-  lastT = t;
-
-  updateClockPower(dt);
-  aiStep(dt);
-
-  // Condiciones de victoria/derrota
-  if (state.power <= 0) {
-    // Apagón: animatrónicos avanzan más
-    for (const k in state.animatronics) state.animatronics[k].aggression = Math.min(1, state.animatronics[k].aggression + 0.15);
-  }
-  requestAnimationFrame(tick);
-}
-
-// IA simple: animatrónicos avanzan por rutas hacia la oficina
-const routes = {
-  freddy: ["stage","hall","closet","office"],
-  bonnie: ["stage","hall","office_left"],
-  chica:  ["stage","kitchen","office_right"],
-};
-
-// Probabilidad de avanzar depende de agresión y si estás en cámaras
+/* IA animatrónicos */
 function aiStep(dt) {
   const camDebuff = state.inCams ? 0.7 : 1.0;
   for (const name in state.animatronics) {
     const a = state.animatronics[name];
-    const route = routes[name];
+    const route = a.route;
     const idx = route.indexOf(a.room);
     if (idx < route.length - 1) {
-      const p = a.aggression * camDebuff * dt; // probabilidad por segundo
+      const p = a.aggression * camDebuff * dt;
       if (Math.random() < p) {
         a.room = route[idx + 1];
-        // actualiza feed si estás mirando la room actual
-        // opcional: overlays de estática
       }
     } else {
-      // En oficina: chequear puertas correspondientes
       let caught = false;
       if (a.room === "office_left" && !state.doors.left) caught = true;
       if (a.room === "office_right" && !state.doors.right) caught = true;
-      if (a.room === "office") caught = true; // Freddy frontal
-
+      if (a.room === "office") caught = true;
       if (caught) {
-        triggerJumpscare(name);
+        triggerOfficePresence(name);
+        setTimeout(() => triggerJumpscare(name), 650);
       } else {
-        // Reaparece al inicio tras intentar
         a.room = route[0];
       }
     }
   }
 }
 
+/* Aparición en oficina */
+function triggerOfficePresence(name) {
+  if (name==="freddy") el.botFreddy.classList.add("show");
+  if (name==="bonnie") el.botBonnie.classList.add("show");
+  if (name==="chica") el.botChica.classList.add("show");
+  setTimeout(() => {
+    el.botFreddy.classList.remove("show");
+    el.botBonnie.classList.remove("show");
+    el.botChica.classList.remove("show");
+  }, 600);
+}
+
+/* Jumpscare */
 function triggerJumpscare(name) {
   state.running = false;
   el.jumpscare.classList.remove("hidden");
-  el.jumpscareImg.src = `assets/animatronics/${name}_jumpscare.png`;
   setTimeout(() => {
-    // Volver al menú
     el.jumpscare.classList.add("hidden");
     el.menu.classList.remove("hidden");
     el.hud.classList.add("hidden");
-    resetView();
-  }, 1800);
+    resetGame();
+  }, 1600);
 }
 
-function resetView() {
-  state.viewYaw = 0;
+function winNight() {
+  state.running = false;
+  alert("¡Has sobrevivido a la noche!");
+  el.menu.classList.remove("hidden");
+  el.hud.classList.add("hidden");
+  resetGame();
+}
+
+function resetGame() {
+  state.viewYaw = 0; 
   applyView();
+  for (const k in state.animatronics) state.animatronics[k].room = "stage";
+  state.inCams = false;
+  state.doors.left = state.doors.right = false;
+  state.lights.left = state.lights.right = false;
+  el.beamLeft.style.opacity = "0";
+  el.beamRight.style.opacity = "0";
+  el.doorLeft.classList.remove("active-door");
+  el.doorRight.classList.remove("active-door");
+  el.lightLeft.classList.remove("active-light");
+  el.lightRight.classList.remove("active-light");
+}
+
+/* Bucle principal */
+function tick(t = performance.now()) {
+  if (!state.running) return;
+  const dt = (t - lastT) / 1000 || 0.016;
+  lastT = t;
+
+  updateClockPower(dt);
+  aiStep(dt);
+
+  // Apagón acelera IA
+  if (state.power <= 0) {
+    for (const k in state.animatronics) {
+      state.animatronics[k].aggression = Math.min(1, state.animatronics[k].aggression + 0.12);
+    }
+  }
+  requestAnimationFrame(tick);
 }
